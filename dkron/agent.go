@@ -462,7 +462,7 @@ func (a *Agent) StartServer() {
 				log.WithError(err).WithField("dir", a.config.DataDir).Fatal("Error Creating Dir")
 			}
 		}
-		s, err := NewStore(a, filepath.Join(a.config.DataDir, a.config.NodeName))
+		s, err := NewStoreBuntDB(a)
 		if err != nil {
 			log.WithError(err).Fatal("dkron: Error initializing store")
 		}
