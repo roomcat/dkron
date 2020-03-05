@@ -26,7 +26,6 @@ func NewDBStore(host, dbName, username, password string) (*MysqlStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.LogMode(true)
 	return &MysqlStore{
 		db: db,
 	}, nil
@@ -292,6 +291,10 @@ func (s *MysqlStore) SetExecutionDone(execution *Execution) (bool, error) {
 			return err
 		}
 
+		if len(dbExecution.Output) > maxOutputSize {
+			dbExecution.Output = dbExecution.Output[:maxOutputSize]
+		}
+
 		if err := tx.Save(&dbExecution).Error; err != nil {
 			return err
 		}
@@ -453,6 +456,8 @@ type DBExecution struct {
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
 }
+
+var maxOutputSize = 1 << 15
 
 func fromDBValue(dbValue interface{}, dest interface{}) error {
 	destValue := reflect.ValueOf(dest)

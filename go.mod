@@ -7,6 +7,7 @@ require (
 	github.com/aws/aws-sdk-go v1.16.23 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/dgraph-io/badger/v2 v2.0.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
 	github.com/gin-contrib/expvar v0.0.0-20180827025536-251166f58ff2
 	github.com/gin-contrib/multitemplate v0.0.0-20170922032617-bbc6daf6024b
@@ -36,6 +37,7 @@ require (
 	github.com/pascaldekloe/goe v0.1.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1-0.20191125210756-b7cc47d857a8
 	github.com/ryanuber/columnize v2.1.0+incompatible
+	github.com/segmentio/ksuid v1.0.2
 	github.com/sirupsen/logrus v1.2.0
 	github.com/soheilhy/cmux v0.1.4
 	github.com/spf13/cobra v0.0.5
@@ -44,9 +46,11 @@ require (
 	github.com/stretchr/testify v1.4.0
 	golang.org/x/net v0.0.0-20190620200207-3b0461eec859
 	golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db // indirect
+	golang.org/x/time v0.0.0-20181108054448-85acf8d2951c // indirect
 	google.golang.org/genproto v0.0.0-20190404172233-64821d5d2107 // indirect
 	google.golang.org/grpc v1.19.1
-	gopkg.in/go-playground/validator.v8 v8.18.2 // indirect
+	gopkg.in/yaml.v2 v2.2.7 // indirect
+	launchpad.net/gocheck v0.0.0-20140225173054-000000000087 // indirect
 )
 
 replace github.com/hashicorp/mdns => github.com/hashicorp/mdns v1.0.1

@@ -46,21 +46,17 @@ dkron.controller('JobListCtrl', function ($scope, $location, $http, $interval, h
     return angular.toJson(str, true);
   }
   $scope.jobTemplate = {
-    name: "job",
     displayname: "",
-    schedule: "",
-    owner: "",
-    owner_email: "",
-    disabled: false,
-    tags: {},
-    retries: 0,
-    processors: null,
-    concurrency: "allow",
-    executor: "shell",
+    schedule: "@every 10s",
+    executor: "http",
     executor_config: {
-      command: "/bin/true"
+      method: "GET",
+      url: "http://www.baidu.com",
+      headers: "[\"apptoken: xxx\", \"lang: zh\"]",
+      body: "",
+      expectCode: "200",
     }
-  }
+  };
   $scope.jobTemplateJson = $scope.toJson($scope.jobTemplate);
 
   $scope.editorOptions = {
@@ -97,14 +93,18 @@ dkron.controller('JobListCtrl', function ($scope, $location, $http, $interval, h
     
     $http.post(DKRON_API_PATH + '/jobs', job).
       then(function (response) {
-        $('#message').html('<div class="alert alert-success fade in">Success created job ' + job.name + '</div>');
+        $('#message').html(
+          '<div class="alert alert-success fade in">Success created job ' + job.displayname + '</div>'
+        );
         updateView();
 
         $(".alert-success").delay(hideDelay).slideUp(200, function () {
           $(".alert").alert('close');
         });
     }, function (response) {
-      $('#message').html('<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error creating job ' + job.name + '</div>');
+      $('#message').html(
+        '<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error creating job ' + job.displayname + ': ' + response.data + '</div>'
+      );
     });
   };
 
@@ -118,14 +118,14 @@ dkron.controller('JobListCtrl', function ($scope, $location, $http, $interval, h
     
     $http.post(DKRON_API_PATH + '/jobs', job).
       then(function (response) {
-        $('#message').html('<div class="alert alert-success fade in">Success updating job ' + job.name + '</div>');
+        $('#message').html('<div class="alert alert-success fade in">Success updating job ' + job.displayname + '</div>');
         updateView();
 
         $(".alert-success").delay(hideDelay).slideUp(200, function () {
           $(".alert").alert('close');
         });
     }, function (response) {
-      $('#message').html('<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error updating job ' + job.name + '</div>');
+      $('#message').html('<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error updating job ' + job.displayname + ': ' + response.data + '</div>');
     });
   };
 
@@ -156,7 +156,7 @@ dkron.controller('JobListCtrl', function ($scope, $location, $http, $interval, h
           $(".alert").alert('close');
         });
     }, function (response) {
-      $('#message').html('<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error toggle job ' + jobName + '</div>');
+      $('#message').html('<div class="alert alert-danger fade in"><button type="button" class="close close-alert" data-dismiss="alert" aria-hidden="true">x</button>Error toggle job ' + jobName+ ': ' + response.data + '</div>');
     });
   }
 

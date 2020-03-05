@@ -1,12 +1,19 @@
 package dkron
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/expvar"
 	"github.com/gin-gonic/gin"
+	"github.com/hashicorp/serf/serf"
+	"github.com/segmentio/ksuid"
 	"github.com/sirupsen/logrus"
 	status "google.golang.org/grpc/status"
 )
@@ -38,6 +45,8 @@ func (h *HTTPTransport) ServeHTTP() {
 	h.Engine = gin.Default()
 	h.Engine.HTMLRender = CreateMyRender()
 	rootPath := h.Engine.Group("/")
+
+	rootPath.Use(h.HuamiSSOMiddleware())
 
 	h.APIRoutes(rootPath)
 	h.agent.DashboardRoutes(rootPath)
@@ -88,6 +97,104 @@ func (h *HTTPTransport) APIRoutes(r *gin.RouterGroup, middleware ...gin.HandlerF
 func (h *HTTPTransport) MetaMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Header("X-Whom", h.agent.config.NodeName)
+		c.Next()
+	}
+}
+
+// HuamiSSOMiddleware adds middleware to the gin Context.
+func (h *HTTPTransport) HuamiSSOMiddleware() gin.HandlerFunc {
+	jwtName := "dkron_jwt"
+	signName := "HS256"
+	secret := []byte("HUAMI SSO")
+	return func(c *gin.Context) {
+		redirectURL := h.agent.config.HuamiSSO + "?admin_public_callback_url=" + c.Request.Host
+		cookieDomain := c.Request.Host
+		if strings.Contains(cookieDomain, ":") {
+			cookieDomain = strings.Split(cookieDomain, ":")[0]
+		}
+		// get jwt from cookie
+		jwtStr, err := c.Cookie(jwtName)
+		if err != nil {
+			// get apptoken from cookie
+			apptoken, err := c.Cookie("apptoken")
+			log.WithFields(logrus.Fields{
+				"apptoken": apptoken,
+				"error":    err,
+			}).Info("api: apptoken from cookie")
+			if err != nil {
+				// no app token, login huami sso
+				c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+				c.Abort()
+				return
+			}
+			// verify apptoken and get user info
+			user, err := verifyHMToken(h.agent.config.HuamiTokenVerify, apptoken)
+			log.WithFields(logrus.Fields{
+				"user":  user,
+				"error": err,
+			}).Info("api: verify app token")
+			if err != nil {
+				// verify error, login huami sso
+				c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+				c.Abort()
+				return
+			}
+			// Create the token
+			token := jwt.New(jwt.GetSigningMethod(signName))
+			claims := token.Claims.(jwt.MapClaims)
+			claims["id"] = user.UserID
+			claims["email"] = user.Email
+			expire := time.Now().Add(time.Hour)
+			claims["exp"] = expire.Unix()
+			claims["orig_iat"] = time.Now().Unix()
+			tokenString, err := token.SignedString(secret)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					"error": err,
+				}).Error("api: sign token error")
+				c.Abort()
+				return
+			}
+			maxage := int(expire.Unix() - time.Now().Unix())
+			fmt.Println("jwt", tokenString)
+
+			// set jwt cookie
+			c.SetCookie(jwtName, tokenString, maxage, "/", cookieDomain, false, true)
+			c.Redirect(http.StatusTemporaryRedirect, "/"+dashboardPathPrefix+"/")
+			c.Abort()
+			return
+		}
+
+		token, err := jwt.Parse(jwtStr, func(t *jwt.Token) (interface{}, error) {
+			if jwt.GetSigningMethod(signName) != t.Method {
+				return nil, errors.New("method error")
+			}
+			return secret, nil
+		})
+		log.WithFields(logrus.Fields{
+			"jwt":   jwtStr,
+			"token": token,
+			"error": err,
+		}).Info("api: verify jwt token")
+
+		if err != nil {
+			// verify error, login huami sso
+			c.SetCookie(jwtName, "", -1, "/", cookieDomain, false, true)
+			c.Redirect(http.StatusTemporaryRedirect, redirectURL)
+			c.Abort()
+			return
+		}
+		if mapClaims, ok := token.Claims.(jwt.MapClaims); ok {
+			var user hmUser
+			if id, ok := mapClaims["id"]; ok {
+				user.UserID = id.(string)
+			}
+			if email, ok := mapClaims["email"]; ok {
+				user.Email = email.(string)
+			}
+			c.Set("HMUser", user)
+		}
+
 		c.Next()
 	}
 }
@@ -146,8 +253,15 @@ func (h *HTTPTransport) jobGetHandler(c *gin.Context) {
 
 func (h *HTTPTransport) jobCreateOrUpdateHandler(c *gin.Context) {
 	// Init the Job object with defaults
+	var user hmUser
+	if u, ok := c.Get("HMUser"); ok {
+		user = u.(hmUser)
+	}
 	job := Job{
 		Concurrency: ConcurrencyAllow,
+		Tags:        map[string]string{"role": "dkron:1"},
+		Owner:       user.UserID,
+		OwnerEmail:  user.Email,
 	}
 
 	// Parse values from JSON
@@ -155,6 +269,10 @@ func (h *HTTPTransport) jobCreateOrUpdateHandler(c *gin.Context) {
 		c.Writer.WriteString(fmt.Sprintf("Unable to parse payload: %s.", err))
 		log.Error(err)
 		return
+	}
+	if job.Name == "" {
+		// create job with new name
+		job.Name = ksuid.New().String()[:10]
 	}
 
 	// Validate job
@@ -235,6 +353,17 @@ func (h *HTTPTransport) executionsHandler(c *gin.Context) {
 }
 
 func (h *HTTPTransport) membersHandler(c *gin.Context) {
+
+	numbers := make([]serf.Member, 0)
+	for _, number := range h.agent.serf.Members() {
+		if number.Status == serf.StatusAlive {
+			numbers = append(numbers, number)
+		}
+	}
+	sort.SliceStable(numbers, func(i, j int) bool {
+		return numbers[i].Name < numbers[j].Name
+	})
+
 	renderJSON(c, http.StatusOK, h.agent.serf.Members())
 }
 

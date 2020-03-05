@@ -165,6 +165,12 @@ type Config struct {
 
 	// DBPassword passowrd of mysql
 	DBPassword string `mapstructure:"db-password"`
+
+	// HuamiSSO host
+	HuamiSSO string `mapstructure:"huami-sso"`
+
+	// HuamiTokenVerify host
+	HuamiTokenVerify string `mapstructure:"huami-token-verify"`
 }
 
 // DefaultBindPort is the default port that dkron will use for Serf communication

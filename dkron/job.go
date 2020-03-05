@@ -388,7 +388,7 @@ func (j *Job) Validate() error {
 // will contain the first illegal character found.
 func isSlug(candidate string) (bool, string) {
 	// Allow only lower case letters (unicode), digits, underscore and dash.
-	illegalCharPattern, _ := regexp.Compile(`[^\p{Ll}0-9_-]`)
+	illegalCharPattern, _ := regexp.Compile(`[^A-Za-z0-9_-]`)
 	whyNot := illegalCharPattern.FindString(candidate)
 	return whyNot == "", whyNot
 }

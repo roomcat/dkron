@@ -1,10 +1,15 @@
 package dkron
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"strconv"
+	"time"
 
 	version "github.com/hashicorp/go-version"
 	"github.com/hashicorp/serf/serf"
@@ -129,4 +134,38 @@ func exists(path string) (bool, error) {
 		return false, nil
 	}
 	return true, err
+}
+
+func verifyHMToken(verifyURL, token string) (*hmUser, error) {
+	res, err := httpClient.PostForm(verifyURL, url.Values{"app_token": []string{token}})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	data, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+	var user hmUser
+	err = json.Unmarshal(data, &user)
+	return &user, err
+}
+
+var httpClient = &http.Client{
+	Transport: &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).DialContext,
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		MaxIdleConnsPerHost: 1000,
+	},
+}
+
+type hmUser struct {
+	UserID string `json:"user_id,omitempty"`
+	Email  string `json:"tid,omitempty"`
 }
