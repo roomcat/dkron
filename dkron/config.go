@@ -251,7 +251,13 @@ func ConfigFlagSet() *flag.FlagSet {
 
 	cmdFlags.String("dog-statsd-addr", "", "DataDog Agent address")
 	cmdFlags.StringSlice("dog-statsd-tags", []string{}, "Datadog tags, specified as key:value")
-	cmdFlags.String("statsd-addr", "", "Statsd address")
+	cmdFlags.String("db-host", "", "mysql host")
+	cmdFlags.String("db-name", "", "database name")
+	cmdFlags.String("db-username", "", "mysql username")
+	cmdFlags.String("db-password", "", "mysql password")
+	cmdFlags.String("huami-sso", "", "huami sso")
+	cmdFlags.String("huami-token-verify", "", "huami token verify")
+	cmdFlags.String("app-host", "", "app host")
 
 	return cmdFlags
 }
