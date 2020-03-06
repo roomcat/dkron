@@ -28,7 +28,7 @@ WORKDIR /opt/local/dkron
 
 COPY --from=build-dkron /go/bin/dkron /bin/dkron
 COPY --from=build-dkron /go/bin/dkron-executor-http /bin/dkron-executor-http
-COPY --from=build-dkron /go/bin/dkron-executor-http /bin/dkron-executor-http
+COPY --from=build-dkron /go/bin/dkron-executor-shell /bin/dkron-executor-shell
 
 
 RUN cd /bin && ls -al
