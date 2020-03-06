@@ -2,7 +2,7 @@ FROM golang:1.13-alpine as build-dkron
 LABEL maintainer="Victor Castell <victor@victorcastell.com>"
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories && \
-	apk add --no-cache git gcc bash ca-certificates openssl tzdata
+	apk add --no-cache git gcc libc-dev
 
 RUN mkdir -p /app
 WORKDIR /app
