@@ -13,7 +13,9 @@ RUN go mod download
 COPY . .
 RUN go install ./...
 
-RUN ls $GOPATH/bin
+ARG GOB=$GOPATH/bin
+RUN pwd $GOPATH/bin
+RUN ls -al $GOPATH/bin
 
 FROM alpine
 
@@ -28,8 +30,8 @@ EXPOSE 8080 8946
 ENV SHELL /bin/bash
 WORKDIR /opt/local/dkron
 
-COPY --from=build-dkron $GOPATH/bin/dkron .
-COPY --from=build-dkron $GOPATH/bin/dkron-* ./
+COPY --from=build-dkron ${GOB}/dkron .
+COPY --from=build-dkron ${GOB}/dkron-* ./
 ENTRYPOINT ["/opt/local/dkron/dkron"]
 
 CMD ["--help"]
