@@ -278,14 +278,14 @@ func (s *MysqlStore) SetExecutionDone(execution *Execution) (bool, error) {
 		}
 
 		var dbExecution DBExecution
-		startAt := execution.StartedAt.Local() // use Local mode
-		if err := tx.Where(DBExecution{
-			JobName:   execution.JobName,
-			StartedAt: &startAt,
-			NodeName:  execution.NodeName,
-		}).FirstOrCreate(&dbExecution).Error; err != nil {
-			return err
-		}
+		// startAt := execution.StartedAt.Local() // use Local mode
+		// if err := tx.Where(DBExecution{
+		// 	JobName:   execution.JobName,
+		// 	StartedAt: &startAt,
+		// 	NodeName:  execution.NodeName,
+		// }).FirstOrCreate(&dbExecution).Error; err != nil {
+		// 	return err
+		// }
 
 		if err := toDBValue(execution, &dbExecution); err != nil {
 			return err
@@ -413,7 +413,7 @@ func (s *MysqlStore) Restore(r io.ReadCloser) error {
 
 // DBJob for Job store in mysql
 type DBJob struct {
-	Name           string     `json:"name"`
+	Name           string     `json:"name" gorm:"primary_key"`
 	DisplayName    string     `json:"displayname"`
 	Timezone       string     `json:"timezone"`
 	Schedule       string     `json:"schedule"`
@@ -436,9 +436,13 @@ type DBJob struct {
 	Status         string     `json:"status"`
 	Next           *time.Time `json:"next"`
 
-	ID        uint `gorm:"primary_key"`
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+}
+
+// TableName of DBJob
+func (DBJob) TableName() string {
+	return "dkron_job"
 }
 
 // DBExecution for Execution store in mysql
@@ -455,6 +459,11 @@ type DBExecution struct {
 	ID        uint `gorm:"primary_key"`
 	CreatedAt *time.Time
 	UpdatedAt *time.Time
+}
+
+// TableName of DBExecution
+func (DBExecution) TableName() string {
+	return "dkron_execution"
 }
 
 var maxOutputSize = 1 << 15

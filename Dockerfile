@@ -6,6 +6,7 @@ EXPOSE 8080 8946
 RUN mkdir -p /app
 WORKDIR /app
 
+ENV GOPROXY=https://goproxy.cn
 ENV GO111MODULE=on
 COPY go.mod go.mod
 COPY go.sum go.sum

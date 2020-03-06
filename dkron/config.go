@@ -171,6 +171,9 @@ type Config struct {
 
 	// HuamiTokenVerify host
 	HuamiTokenVerify string `mapstructure:"huami-token-verify"`
+
+	// AppHost of dkron
+	AppHost string `mapstructure:"app-host"`
 }
 
 // DefaultBindPort is the default port that dkron will use for Serf communication

@@ -107,96 +107,120 @@ func (h *HTTPTransport) HuamiSSOMiddleware() gin.HandlerFunc {
 	signName := "HS256"
 	secret := []byte("HUAMI SSO")
 	return func(c *gin.Context) {
-		redirectURL := h.agent.config.HuamiSSO + "?admin_public_callback_url=" + c.Request.Host
+		redirectURL := fmt.Sprintf("%s?admin_public_callback_url=%s", h.agent.config.HuamiSSO, h.agent.config.AppHost)
 		cookieDomain := c.Request.Host
 		if strings.Contains(cookieDomain, ":") {
 			cookieDomain = strings.Split(cookieDomain, ":")[0]
 		}
-		// get jwt from cookie
-		jwtStr, err := c.Cookie(jwtName)
-		if err != nil {
-			// get apptoken from cookie
-			apptoken, err := c.Cookie("apptoken")
-			log.WithFields(logrus.Fields{
-				"apptoken": apptoken,
-				"error":    err,
-			}).Info("api: apptoken from cookie")
-			if err != nil {
-				// no app token, login huami sso
-				c.Redirect(http.StatusTemporaryRedirect, redirectURL)
-				c.Abort()
-				return
-			}
-			// verify apptoken and get user info
-			user, err := verifyHMToken(h.agent.config.HuamiTokenVerify, apptoken)
-			log.WithFields(logrus.Fields{
-				"user":  user,
-				"error": err,
-			}).Info("api: verify app token")
-			if err != nil {
-				// verify error, login huami sso
-				c.Redirect(http.StatusTemporaryRedirect, redirectURL)
-				c.Abort()
-				return
-			}
-			// Create the token
-			token := jwt.New(jwt.GetSigningMethod(signName))
-			claims := token.Claims.(jwt.MapClaims)
-			claims["id"] = user.UserID
-			claims["email"] = user.Email
-			expire := time.Now().Add(time.Hour)
-			claims["exp"] = expire.Unix()
-			claims["orig_iat"] = time.Now().Unix()
-			tokenString, err := token.SignedString(secret)
-			if err != nil {
-				log.WithFields(logrus.Fields{
-					"error": err,
-				}).Error("api: sign token error")
-				c.Abort()
-				return
-			}
-			maxage := int(expire.Unix() - time.Now().Unix())
-			fmt.Println("jwt", tokenString)
-
+		if user, ok := verifyJwtToken(c, jwtName, signName, secret); ok {
+			c.Set("HMUser", user)
+		} else if user, ok := verifyAppToken(c, h.agent.config.HuamiTokenVerify); ok {
+			c.Set("HMUser", user)
+			token, maxage := signJwtToken(user, signName, secret)
 			// set jwt cookie
-			c.SetCookie(jwtName, tokenString, maxage, "/", cookieDomain, false, true)
+			c.SetCookie(jwtName, token, maxage, "/", cookieDomain, false, true)
 			c.Redirect(http.StatusTemporaryRedirect, "/"+dashboardPathPrefix+"/")
 			c.Abort()
 			return
-		}
-
-		token, err := jwt.Parse(jwtStr, func(t *jwt.Token) (interface{}, error) {
-			if jwt.GetSigningMethod(signName) != t.Method {
-				return nil, errors.New("method error")
-			}
-			return secret, nil
-		})
-		log.WithFields(logrus.Fields{
-			"jwt":   jwtStr,
-			"token": token,
-			"error": err,
-		}).Info("api: verify jwt token")
-
-		if err != nil {
-			// verify error, login huami sso
+		} else {
+			// clean token, login huami sso
 			c.SetCookie(jwtName, "", -1, "/", cookieDomain, false, true)
+			c.SetCookie("apptoken", "", -1, "/", cookieDomain, false, true)
 			c.Redirect(http.StatusTemporaryRedirect, redirectURL)
 			c.Abort()
 			return
 		}
-		if mapClaims, ok := token.Claims.(jwt.MapClaims); ok {
-			var user hmUser
-			if id, ok := mapClaims["id"]; ok {
-				user.UserID = id.(string)
-			}
-			if email, ok := mapClaims["email"]; ok {
-				user.Email = email.(string)
-			}
-			c.Set("HMUser", user)
-		}
-
 		c.Next()
 	}
+}
+
+func verifyAppToken(c *gin.Context, verifyURL string) (user hmUser, ok bool) {
+	// get apptoken from cookie
+	apptoken, err := c.Cookie("apptoken")
+	log.WithFields(logrus.Fields{
+		"apptoken": apptoken,
+		"error":    err,
+	}).Debug("api: apptoken from cookie")
+	if err != nil {
+		return
+	}
+	// verify apptoken and get user info
+	u, err := verifyHMToken(verifyURL, apptoken)
+	log.WithFields(logrus.Fields{
+		"user":  user,
+		"error": err,
+	}).Info("api: verify app token")
+	if err != nil {
+		return
+	}
+	return *u, true
+}
+
+func signJwtToken(user hmUser, signName string, secret []byte) (string, int) {
+	token := jwt.New(jwt.GetSigningMethod(signName))
+	claims := token.Claims.(jwt.MapClaims)
+	expire := time.Now().Add(24 * time.Hour)
+	claims["exp"] = expire.Unix()
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"error": err,
+		}).Error("api: sign token error")
+	}
+	maxage := int(expire.Unix() - time.Now().Unix())
+	return tokenString, maxage
+}
+
+func verifyJwtToken(c *gin.Context, jwtName string, signName string, secret []byte) (user hmUser, ok bool) {
+	// get jwt from cookie
+	jwtStr, err := c.Cookie(jwtName)
+	if err != nil {
+		return
+	}
+
+	token, err := jwt.Parse(jwtStr, func(t *jwt.Token) (interface{}, error) {
+		if jwt.GetSigningMethod(signName) != t.Method {
+			return nil, errors.New("method error")
+		}
+		return secret, nil
+	})
+
+	if err != nil {
+		log.WithFields(logrus.Fields{
+			"jwt":   jwtStr,
+			"error": err,
+		}).Error("api: verify jwt token error")
+		return
+	}
+
+	if mapClaims, ok := token.Claims.(jwt.MapClaims); ok {
+		if isJwtExpired(mapClaims) {
+			log.WithFields(logrus.Fields{
+				"jwt":   jwtStr,
+				"error": "token expired",
+			}).Error("api: verify jwt token error")
+			return user, false
+		}
+
+		var user hmUser
+		if id, ok := mapClaims["id"]; ok {
+			user.UserID = id.(string)
+		}
+		if email, ok := mapClaims["email"]; ok {
+			user.Email = email.(string)
+		}
+		return user, true
+	}
+	return
+}
+
+func isJwtExpired(claims jwt.MapClaims) bool {
+	if _, ok := claims["exp"]; ok {
+		if exp, ok := claims["exp"].(float64); ok {
+			return int64(exp) < time.Now().Unix()
+		}
+	}
+	return true
 }
 
 func renderJSON(c *gin.Context, status int, v interface{}) {
