@@ -13,7 +13,9 @@ RUN go mod download
 COPY . .
 RUN go install ./...
 
-RUN ls -al
+RUN ls $GOPATH/bin
+
+FROM alpine
 
 RUN set -x \
 	&& buildDeps='bash ca-certificates openssl tzdata' \
@@ -26,8 +28,8 @@ EXPOSE 8080 8946
 ENV SHELL /bin/bash
 WORKDIR /opt/local/dkron
 
-COPY --from=build-dkron /app/dkron .
-COPY --from=build-dkron /app/dkron-* ./
+COPY --from=build-dkron $GOPATH/bin/dkron .
+COPY --from=build-dkron $GOPATH/bin/dkron-* ./
 ENTRYPOINT ["/opt/local/dkron/dkron"]
 
 CMD ["--help"]
