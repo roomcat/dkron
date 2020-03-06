@@ -16,23 +16,15 @@ RUN go install ./...
 FROM alpine
 
 RUN set -x \
-	&& buildDeps='bash ca-certificates openssl tzdata' \
+	&& buildDeps='ca-certificates' \
 	&& apk add --update $buildDeps \
 	&& rm -rf /var/cache/apk/* \
-	&& mkdir -p /opt/local/dkron
 
 EXPOSE 8080 8946
-
-ENV SHELL /bin/bash
-WORKDIR /opt/local/dkron
 
 COPY --from=build-dkron /go/bin/dkron /bin/dkron
 COPY --from=build-dkron /go/bin/dkron-executor-http /bin/dkron-executor-http
 COPY --from=build-dkron /go/bin/dkron-executor-shell /bin/dkron-executor-shell
-
-
-RUN cd /bin && ls -al
-RUN /bin/dkron
 
 ENTRYPOINT ["/bin/dkron"]
 
