@@ -30,7 +30,7 @@ COPY --from=build-dkron /go/bin/dkron .
 COPY --from=build-dkron /go/bin/dkron-* ./
 
 RUN ls -al
-RUN dkron
+RUN ./dkron
 
 ENTRYPOINT ["/opt/local/dkron/dkron"]
 
