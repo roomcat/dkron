@@ -26,8 +26,8 @@ EXPOSE 8080 8946
 ENV SHELL /bin/bash
 WORKDIR /opt/local/dkron
 
-COPY --from=build-dkron /go/dkron .
-COPY --from=build-dkron /go/dkron-* ./
+COPY --from=build-dkron /go/bin/dkron .
+COPY --from=build-dkron /go/bin/dkron-* ./
 ENTRYPOINT ["/opt/local/dkron/dkron"]
 
 CMD ["--help"]
