@@ -26,12 +26,14 @@ EXPOSE 8080 8946
 ENV SHELL /bin/bash
 WORKDIR /opt/local/dkron
 
-COPY --from=build-dkron /go/bin/dkron .
-COPY --from=build-dkron /go/bin/dkron-* ./
+COPY --from=build-dkron /go/bin/dkron /bin/dkron
+COPY --from=build-dkron /go/bin/dkron-executor-http /bin/dkron-executor-http
+COPY --from=build-dkron /go/bin/dkron-executor-http /bin/dkron-executor-http
 
-RUN ls -al
-RUN ./dkron
 
-ENTRYPOINT ["/opt/local/dkron/dkron"]
+RUN cd /bin && ls -al
+RUN /bin/dkron
+
+ENTRYPOINT ["/bin/dkron"]
 
 CMD ["--help"]
