@@ -13,8 +13,7 @@ RUN go mod download
 COPY . .
 RUN go install ./...
 
-ARG GOB=$GOPATH/bin
-RUN pwd $GOPATH/bin
+RUN echo $GOPATH
 RUN ls -al $GOPATH/bin
 
 FROM alpine
