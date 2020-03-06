@@ -18,7 +18,7 @@ FROM alpine
 RUN set -x \
 	&& buildDeps='ca-certificates' \
 	&& apk add --update $buildDeps \
-	&& rm -rf /var/cache/apk/* \
+	&& rm -rf /var/cache/apk/*
 
 EXPOSE 8080 8946
 
