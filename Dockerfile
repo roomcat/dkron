@@ -1,4 +1,4 @@
-FROM golang:1.13 as build-dkron
+FROM golang:1.13-alpine as build-dkron
 LABEL maintainer="Victor Castell <victor@victorcastell.com>"
 
 RUN mkdir -p /app
