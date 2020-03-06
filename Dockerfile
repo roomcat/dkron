@@ -1,7 +1,5 @@
-FROM golang:1.13
+FROM golang:1.13 as build-dkron
 LABEL maintainer="Victor Castell <victor@victorcastell.com>"
-
-EXPOSE 8080 8946
 
 RUN mkdir -p /app
 WORKDIR /app
@@ -15,4 +13,21 @@ RUN go mod download
 COPY . .
 RUN go install ./...
 
-CMD ["dkron"]
+RUN ls -al
+
+RUN set -x \
+	&& buildDeps='bash ca-certificates openssl tzdata' \
+	&& apk add --update $buildDeps \
+	&& rm -rf /var/cache/apk/* \
+	&& mkdir -p /opt/local/dkron
+
+EXPOSE 8080 8946
+
+ENV SHELL /bin/bash
+WORKDIR /opt/local/dkron
+
+COPY --from=build-dkron /app/dkron .
+COPY --from=build-dkron /app/dkron-* ./
+ENTRYPOINT ["/opt/local/dkron/dkron"]
+
+CMD ["--help"]
