@@ -254,7 +254,7 @@ func (s *MysqlStore) SetExecution(execution *Execution) (string, error) {
 	if count > MaxExecutions {
 		err := s.db.Where(&DBExecution{JobName: execution.JobName}).Order("TIMESTAMP(started_at) DESC").Offset(MaxExecutions - 2).First(&dbExecution).Error
 		if err == nil {
-			s.db.Unscoped().Where("TIMESTAMP(started_at) < TIMESTAMP(?)", dbExecution.StartedAt).Delete(DBExecution{})
+			s.db.Unscoped().Where("job_name = ? AND TIMESTAMP(started_at) < TIMESTAMP(?)", execution.JobName, dbExecution.StartedAt).Delete(DBExecution{})
 		}
 	}
 
