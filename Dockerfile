@@ -7,7 +7,7 @@ RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 RUN mkdir -p /app
 WORKDIR /app
 
-ENV GOPROXY=https://goproxy.cn
+# ENV GOPROXY=https://goproxy.cn
 ENV GO111MODULE=on
 COPY go.mod go.mod
 COPY go.sum go.sum
