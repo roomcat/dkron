@@ -377,18 +377,17 @@ func (h *HTTPTransport) executionsHandler(c *gin.Context) {
 }
 
 func (h *HTTPTransport) membersHandler(c *gin.Context) {
-
-	numbers := make([]serf.Member, 0)
-	for _, number := range h.agent.serf.Members() {
-		if number.Status == serf.StatusAlive {
-			numbers = append(numbers, number)
+	mumbers := make([]serf.Member, 0)
+	for _, mumber := range h.agent.serf.Members() {
+		if mumber.Status == serf.StatusAlive {
+			mumbers = append(mumbers, mumber)
 		}
 	}
-	sort.SliceStable(numbers, func(i, j int) bool {
-		return numbers[i].Name < numbers[j].Name
+	sort.SliceStable(mumbers, func(i, j int) bool {
+		return mumbers[i].Name < mumbers[j].Name
 	})
 
-	renderJSON(c, http.StatusOK, h.agent.serf.Members())
+	renderJSON(c, http.StatusOK, mumbers)
 }
 
 func (h *HTTPTransport) leaderHandler(c *gin.Context) {
